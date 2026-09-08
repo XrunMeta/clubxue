@@ -1,0 +1,66 @@
+
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Kismet/BlueprintAsyncActionBase.h"
+#include "OnlineSubsystemEOS.h"
+#include "OnlineSubsystemEIK/SdkFunctions/EIK_SharedFunctionFile.h"
+THIRD_PARTY_INCLUDES_START
+#include "eos_stats.h"
+#include "eos_stats_types.h"
+THIRD_PARTY_INCLUDES_END
+#include "EIK_Stats_IngestStat.generated.h"
+
+USTRUCT(BlueprintType)
+struct FEIK_Stats_IngestData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "EOS Integration Kit | SDK Functions | Stats Interface")
+	FString Name;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "EOS Integration Kit | SDK Functions | Stats Interface")
+	int32 IngestAmount;
+
+	FEIK_Stats_IngestData()
+		: Name("")
+		, IngestAmount(0)
+	{}
+	EOS_Stats_IngestData ToEOSStatsIngestData()
+	{
+		EOS_Stats_IngestData Data;
+		Data.ApiVersion = EOS_STATS_INGESTDATA_API_LATEST;
+		auto NameAnsi = StringCast<ANSICHAR>(*Name);
+		CachedNameAnsi.SetNumUninitialized(NameAnsi.Length() + 1);
+		FMemory::Memcpy(CachedNameAnsi.GetData(), NameAnsi.Get(), NameAnsi.Length() + 1);
+		Data.StatName = CachedNameAnsi.GetData();
+		Data.IngestAmount = IngestAmount;
+		return Data;
+	}
+
+	TArray<ANSICHAR> CachedNameAnsi;
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FEIK_OnStatsIngestStatComplete, const FEIK_ProductUserId&, LocalUserId, const TEnumAsByte<EEIK_Result>&, ResultCode, const FEIK_ProductUserId&, TargetUserId);
+
+UCLASS()
+class ONLINESUBSYSTEMEIK_API UEIK_Stats_IngestStat : public UBlueprintAsyncActionBase
+{
+	GENERATED_BODY()
+
+public:
+
+	UFUNCTION(BlueprintCallable, Category = "EOS Integration Kit | SDK Functions | Stats Interface", DisplayName="EOS_Stats_IngestStat")
+	static UEIK_Stats_IngestStat* EIK_Stats_IngestStat(FEIK_ProductUserId LocalUserId, const TArray<FEIK_Stats_IngestData>& Stats, const FEIK_ProductUserId& TargetUserId);
+
+	UPROPERTY(BlueprintAssignable, Category = "EOS Integration Kit | SDK Functions | Stats Interface")
+	FEIK_OnStatsIngestStatComplete OnCallback;
+
+private:
+	FEIK_ProductUserId Var_LocalUserId;
+	TArray<FEIK_Stats_IngestData> Var_Stats;
+	FEIK_ProductUserId Var_TargetUserId;
+	virtual void Activate() override;
+	static void EOS_CALL Internal_OnStatsIngestStatComplete(const EOS_Stats_IngestStatCompleteCallbackInfo* Data);
+};

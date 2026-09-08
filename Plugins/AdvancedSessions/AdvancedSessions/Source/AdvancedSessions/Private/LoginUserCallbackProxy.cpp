@@ -1,0 +1,107 @@
+
+
+#include "LoginUserCallbackProxy.h"
+
+#include "Online.h"
+
+ULoginUserCallbackProxy::ULoginUserCallbackProxy(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+	, Delegate(FOnLoginCompleteDelegate::CreateUObject(this, &ThisClass::OnCompleted))
+{
+}
+
+ULoginUserCallbackProxy* ULoginUserCallbackProxy::LoginUser(UObject* WorldContextObject, class APlayerController* PlayerController, FString UserID, FString UserToken, FString AuthType)
+{
+	ULoginUserCallbackProxy* Proxy = NewObject<ULoginUserCallbackProxy>();
+	Proxy->PlayerControllerWeakPtr = PlayerController;
+	Proxy->UserID = UserID;
+	Proxy->UserToken = UserToken;
+	Proxy->AuthType = AuthType;
+	Proxy->WorldContextObject = WorldContextObject;
+	return Proxy;
+}
+
+void ULoginUserCallbackProxy::Activate()
+{
+
+	if (!PlayerControllerWeakPtr.IsValid())
+	{
+		OnFailure.Broadcast();
+		return;
+	}
+
+	ULocalPlayer* Player = Cast<ULocalPlayer>(PlayerControllerWeakPtr->Player);
+
+	if (!Player)
+	{
+		OnFailure.Broadcast();
+		return;
+	}
+
+	FOnlineSubsystemBPCallHelperAdvanced Helper(TEXT("LoginUser"), GEngine->GetWorldFromContextObject(WorldContextObject.Get(), EGetWorldErrorMode::LogAndReturnNull));
+
+	if (!Helper.OnlineSub)
+	{
+		OnFailure.Broadcast();
+		return;
+	}
+
+	auto Identity = Helper.OnlineSub->GetIdentityInterface();
+	if (Identity.IsValid())
+	{
+
+		if (AuthType.IsEmpty())
+		{
+			AuthType = Identity->GetAuthType();
+		}
+		DelegateHandle = Identity->AddOnLoginCompleteDelegate_Handle(Player->GetControllerId(), Delegate);
+		FOnlineAccountCredentials AccountCreds(AuthType, UserID, UserToken);
+		Identity->Login(Player->GetControllerId(), AccountCreds);
+		return;
+	}
+
+	OnFailure.Broadcast();
+}
+
+void ULoginUserCallbackProxy::OnCompleted(int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& ErrorVal)
+{
+	if (PlayerControllerWeakPtr.IsValid())
+	{
+		ULocalPlayer* Player = Cast<ULocalPlayer>(PlayerControllerWeakPtr->Player);
+
+		FUniqueNetIdRepl UniqueID(UserId.AsShared());
+
+		if (Player)
+		{
+			FOnlineSubsystemBPCallHelperAdvanced Helper(TEXT("GetUserPrivilege"), GEngine->GetWorldFromContextObject(WorldContextObject.Get(), EGetWorldErrorMode::LogAndReturnNull));
+
+			if (!Helper.OnlineSub)
+			{
+				OnFailure.Broadcast();
+				return;
+			}
+
+			auto Identity = Helper.OnlineSub->GetIdentityInterface();
+			if (Identity.IsValid())
+			{
+				Identity->ClearOnLoginCompleteDelegate_Handle(Player->GetControllerId(), DelegateHandle);
+			}
+			Player->SetCachedUniqueNetId(UniqueID);
+		}
+
+		if (APlayerState* State = PlayerControllerWeakPtr->PlayerState)
+		{
+
+			State->SetUniqueId(UniqueID);
+		}
+	}
+
+	if (bWasSuccessful)
+	{
+		OnSuccess.Broadcast();
+	}
+	else
+	{
+		OnFailure.Broadcast();
+	}
+}

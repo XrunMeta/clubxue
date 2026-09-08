@@ -1,0 +1,29 @@
+
+
+#pragma once
+#include "CoreMinimal.h"
+#include "VRBPDatatypes.h"
+#include "UObject/Interface.h"
+
+#include "VRTrackedParentInterface.generated.h"
+
+UINTERFACE(MinimalAPI, meta = (CannotImplementInterfaceInBlueprint))
+class UVRTrackedParentInterface: public UInterface
+{
+	GENERATED_UINTERFACE_BODY()
+};
+
+class VREXPANSIONPLUGIN_API IVRTrackedParentInterface
+{
+	GENERATED_IINTERFACE_BODY()
+
+public:
+
+	UFUNCTION(BlueprintCallable, Category = "VRTrackedParentInterface")
+	virtual void SetTrackedParent(UPrimitiveComponent * NewParentComponent, float WaistRadius, EBPVRWaistTrackingMode WaistTrackingMode)
+	{}
+
+	static void Default_SetTrackedParent_Impl(UPrimitiveComponent * NewParentComponent, float WaistRadius, EBPVRWaistTrackingMode WaistTrackingMode, FBPVRWaistTracking_Info & OptionalWaistTrackingParent, USceneComponent * Self);
+
+	static FTransform Default_GetWaistOrientationAndPosition(FBPVRWaistTracking_Info & WaistTrackingInfo);
+};

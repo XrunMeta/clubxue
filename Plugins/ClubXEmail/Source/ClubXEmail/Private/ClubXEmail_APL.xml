@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+    <gameActivityImportAdditions>
+        <insert>
+            import android.content.Intent;
+            import android.net.Uri;
+        </insert>
+    </gameActivityImportAdditions>
+    <gameActivityClassAdditions>
+        <insert>
+            public void AndroidThunkJava_OpenClubXEmail(String email)
+            {
+                try
+                {
+                    Intent intent = new Intent(Intent.ACTION_SENDTO);
+                    intent.setData(Uri.parse("mailto:" + email));
+
+                    Intent chooser = Intent.createChooser(intent, "Choose Email App");
+                    startActivity(chooser);
+                }
+                catch (Exception e)
+                {
+                    e.printStackTrace();
+                }
+            }
+        </insert>
+    </gameActivityClassAdditions>
+</root>

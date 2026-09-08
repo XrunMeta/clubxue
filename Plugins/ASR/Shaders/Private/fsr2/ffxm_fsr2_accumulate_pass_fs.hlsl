@@ -1,0 +1,97 @@
+
+
+#define FSR2_BIND_SRV_INPUT_EXPOSURE                         0
+#define FSR2_BIND_SRV_DILATED_REACTIVE_MASKS                 1
+#if FFXM_FSR2_OPTION_LOW_RESOLUTION_MOTION_VECTORS
+
+#if FFXM_FSR2_OPTION_SHADER_OPT_ULTRA_PERFORMANCE
+#define FSR2_BIND_SRV_DILATED_DEPTH_MOTION_VECTORS_INPUT_LUMA 2
+#else
+#define FSR2_BIND_SRV_DILATED_MOTION_VECTORS                 2
+#endif
+
+#else
+#define FSR2_BIND_SRV_INPUT_MOTION_VECTORS                   2
+#endif
+#define FSR2_BIND_SRV_INTERNAL_UPSCALED                      3
+#define FSR2_BIND_SRV_LOCK_STATUS                            4
+
+#if FFXM_FSR2_OPTION_SHADER_OPT_ULTRA_PERFORMANCE
+#define FSR2_BIND_SRV_INPUT_COLOR                            5
+#else
+#define FSR2_BIND_SRV_PREPARED_INPUT_COLOR                   5
+#endif
+
+#define FSR2_BIND_SRV_LANCZOS_LUT                            6
+#define FSR2_BIND_SRV_UPSCALE_MAXIMUM_BIAS_LUT               7
+#define FSR2_BIND_SRV_SCENE_LUMINANCE_MIPS                   8
+#define FSR2_BIND_SRV_AUTO_EXPOSURE                          9
+
+#if FFXM_FSR2_OPTION_SHADER_OPT_ULTRA_PERFORMANCE
+#define FSR2_BIND_SRV_NEW_LOCKS                              10
+#else
+#define FSR2_BIND_SRV_LUMA_HISTORY                           10
+#define FSR2_BIND_SRV_TEMPORAL_REACTIVE                      11
+#define FSR2_BIND_SRV_NEW_LOCKS                              12
+#endif
+
+#define FSR2_BIND_CB_FSR2                                    0
+
+#include "ffxm_fsr2_callbacks_hlsl.h"
+#include "ffxm_fsr2_common.h"
+#include "ffxm_fsr2_sample.h"
+#include "ffxm_fsr2_upsample.h"
+#include "ffxm_fsr2_postprocess_lock_status.h"
+#include "ffxm_fsr2_reproject.h"
+#include "ffxm_fsr2_accumulate.h"
+
+struct VertexOut
+{
+	float4 position : SV_POSITION;
+};
+
+struct AccumulateOutputsFS
+{
+#if FFXM_FSR2_OPTION_SHADER_OPT_ULTRA_PERFORMANCE
+    FfxFloat32x3 fUpscaledColor    : SV_TARGET0;
+    FfxFloat32x2 fLockStatus        : SV_TARGET1;
+#if FFXM_FSR2_OPTION_APPLY_SHARPENING == 0
+    FfxFloat32x3 fColor             : SV_TARGET2;
+#endif
+#elif !FFXM_SHADER_QUALITY_BALANCED_OR_PERFORMANCE
+    FfxFloat32x4 fColorAndWeight    : SV_TARGET0;
+    FfxFloat32x2 fLockStatus        : SV_TARGET1;
+    FfxFloat32x4 fLumaHistory       : SV_TARGET2;
+#if FFXM_FSR2_OPTION_APPLY_SHARPENING == 0
+    FfxFloat32x3 fColor             : SV_TARGET3;
+#endif
+#else 
+    FfxFloat32x3 fUpscaledColor     : SV_TARGET0;
+    FfxFloat32 fTemporalReactive    : SV_TARGET1;
+    FfxFloat32x2 fLockStatus        : SV_TARGET2;
+#if FFXM_FSR2_OPTION_APPLY_SHARPENING == 0
+    FfxFloat32x3 fColor             : SV_TARGET3;
+#endif
+#endif
+};
+
+AccumulateOutputsFS main(float4 SvPosition : SV_POSITION)
+{
+    uint2 uPixelCoord = uint2(SvPosition.xy);
+    AccumulateOutputs result = Accumulate(uPixelCoord);
+    AccumulateOutputsFS output = (AccumulateOutputsFS)0;
+#if FFXM_FSR2_OPTION_SHADER_OPT_ULTRA_PERFORMANCE
+    output.fUpscaledColor = result.fColorAndWeight.xyz;
+#elif !FFXM_SHADER_QUALITY_BALANCED_OR_PERFORMANCE
+    output.fColorAndWeight = result.fColorAndWeight;
+    output.fLumaHistory = result.fLumaHistory;
+#else
+    output.fUpscaledColor = result.fUpscaledColor;
+    output.fTemporalReactive = result.fTemporalReactive;
+#endif
+    output.fLockStatus = result.fLockStatus;
+#if FFXM_FSR2_OPTION_APPLY_SHARPENING == 0
+    output.fColor = result.fColor;
+#endif
+    return output;
+}

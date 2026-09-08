@@ -1,0 +1,16 @@
+{
+    "FileVersion": 3,
+    "Version": 1,
+    "VersionName": "1.0",
+    "FriendlyName": "ClubX Email",
+    "Description": "Android email launcher for ClubX",
+    "Category": "Android",
+    "EnabledByDefault": true,
+    "Modules": [
+        {
+            "Name": "ClubXEmail",
+            "Type": "Runtime",
+            "LoadingPhase": "Default"
+        }
+    ]
+}

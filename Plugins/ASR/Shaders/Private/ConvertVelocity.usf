@@ -1,0 +1,39 @@
+
+
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/ScreenPass.ush"
+
+float3 ComputeStaticVelocity(float2 ScreenPos, float DeviceZ)
+{
+    float3 PosN = float3(ScreenPos, DeviceZ);
+
+    float4 ThisClip = float4(PosN, 1);
+    float4 PrevClip = mul(ThisClip, View.ClipToPrevClip);
+    float3 PrevScreen = PrevClip.xyz / PrevClip.w;
+    return PosN - PrevScreen;
+}
+
+Texture2D InputDepth;
+Texture2D InputVelocity;
+
+float2 main(float4 SvPosition : SV_POSITION) : SV_Target0
+{
+    uint2 Pos = uint2(SvPosition.xy);
+    float2 Velocity = 0;
+    float4 EncodedVelocity = InputVelocity[Pos + View.ViewRectMin.xy];
+    if (EncodedVelocity.x > 0.0)
+    {
+        Velocity = DecodeVelocityFromTexture(EncodedVelocity).xy;
+    }
+    else
+    {
+        float Depth = InputDepth[Pos + View.ViewRectMin.xy].x;
+
+        float2 ViewportUV = (Pos + 0.5) * View.ViewSizeAndInvSize.zw;
+        float2 ScreenPos = ViewportUVToScreenPos(ViewportUV);
+
+        Velocity = ComputeStaticVelocity(ScreenPos, Depth).xy;
+    }
+
+    return Velocity * float2(-0.5, 0.5);
+}

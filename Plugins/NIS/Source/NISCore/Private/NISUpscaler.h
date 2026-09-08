@@ -1,0 +1,56 @@
+
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Misc/CoreDelegates.h"
+#include "RendererInterface.h"
+#include "PostProcess/PostProcessUpscale.h"
+#include "SceneViewExtension.h"
+#include "NISShaders.h"
+
+class FSceneTextureParameters;
+class FRHITexture;
+class FNISViewExtension final : public FSceneViewExtensionBase
+{
+public:
+	FNISViewExtension(const FAutoRegister& AutoRegister);
+
+	virtual void SetupViewFamily(FSceneViewFamily& InViewFamily) override;
+	virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView) override;
+	virtual void SetupViewPoint(APlayerController* Player, FMinimalViewInfo& InViewInfo) override;
+	virtual void BeginRenderViewFamily(FSceneViewFamily& InViewFamily) override;
+};
+
+class FNVImageUpscaler final : public ISpatialUpscaler
+{
+	friend class FNISModule;
+public:
+	FNVImageUpscaler();
+	virtual ~FNVImageUpscaler();
+
+	virtual const TCHAR* GetDebugName() const override;
+
+	virtual ISpatialUpscaler* Fork_GameThread(const class FSceneViewFamily& ViewFamily) const override;
+
+	virtual FScreenPassTexture AddPasses(
+		FRDGBuilder& GraphBuilder,
+		const FViewInfo& View,
+		const FInputs& PassInputs) const override;
+
+	struct FNISErrorState
+	{
+		bool bOtherSpatialUpscalerActive = false;
+		FString IncompatibleUpscalerCVarNames;
+
+		bool bPrimaryAndSecondarySpatialUpscaling = false;
+	};
+
+#if !UE_BUILD_SHIPPING
+	static void GetOnScreenMessages(TMultiMap<FCoreDelegates::EOnScreenMessageSeverity, FText>& OutMessages);
+	static FDelegateHandle OnScreenMessagesDelegateHandle;
+#endif
+	static void RegisterOnScreenMessageHandler();
+	static void RemoveOnScreenMessageHandler();
+	static FNISErrorState ErrorState;
+};

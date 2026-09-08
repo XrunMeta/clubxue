@@ -1,0 +1,441 @@
+
+
+#include "GripScripts/VRGripScriptBase.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(VRGripScriptBase)
+
+#include "GripMotionControllerComponent.h"
+#include "VRGripInterface.h"
+#include "Engine/BlueprintGeneratedClass.h"
+#include "Components/PrimitiveComponent.h"
+#include "GameFramework/Actor.h"
+#include "Net/UnrealNetwork.h"
+#include "Net/Core/PushModel/PushModel.h"
+#include "Engine/NetDriver.h"
+
+#if UE_WITH_IRIS
+#include "Iris/ReplicationSystem/ReplicationFragmentUtil.h"
+#endif 
+
+UVRGripScriptBase::UVRGripScriptBase(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+
+	WorldTransformOverrideType = EGSTransformOverrideType::None;
+	bDenyAutoDrop = false;
+	bDenyLateUpdates = false;
+	bForceDrop = false;
+	bIsActive = false;
+
+	bCanEverTick = false;
+	bAllowTicking = false;
+}
+
+void UVRGripScriptBase::OnEndPlay_Implementation(const EEndPlayReason::Type EndPlayReason) {};
+void UVRGripScriptBase::OnBeginPlay_Implementation(UObject * CallingOwner) {};
+
+bool UVRGripScriptBase::GetWorldTransform_Implementation(UGripMotionControllerComponent* GrippingController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool bIsForTeleport) { return true; }
+void UVRGripScriptBase::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
+void UVRGripScriptBase::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) {}
+void UVRGripScriptBase::OnSecondaryGrip_Implementation(UGripMotionControllerComponent * Controller, USceneComponent * SecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
+void UVRGripScriptBase::OnSecondaryGripRelease_Implementation(UGripMotionControllerComponent * Controller, USceneComponent * ReleasingSecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
+
+EGSTransformOverrideType UVRGripScriptBase::GetWorldTransformOverrideType() { return WorldTransformOverrideType; }
+bool UVRGripScriptBase::IsScriptActive() { return bIsActive; }
+
+bool UVRGripScriptBase::Wants_DenyTeleport_Implementation(UGripMotionControllerComponent * Controller) { return false; }
+void UVRGripScriptBase::HandlePrePhysicsHandle(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation &GripInfo, FBPActorPhysicsHandleInformation * HandleInfo, FTransform & KinPose) {}
+void UVRGripScriptBase::HandlePostPhysicsHandle(UGripMotionControllerComponent* GrippingController, FBPActorPhysicsHandleInformation * HandleInfo) {}
+
+UVRGripScriptBase* UVRGripScriptBase::GetGripScriptByClass(UObject* WorldContextObject, TSubclassOf<UVRGripScriptBase> GripScriptClass, EBPVRResultSwitch& Result)
+{
+	if (WorldContextObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+	{
+		TArray<UVRGripScriptBase*> GripScripts;
+		if (IVRGripInterface::Execute_GetGripScripts(WorldContextObject, GripScripts))
+		{
+			for (UVRGripScriptBase* Script : GripScripts)
+			{
+				if (Script && Script->IsA(GripScriptClass))
+				{
+					Result = EBPVRResultSwitch::OnSucceeded;
+					return Script;
+				}
+			}
+		}
+	}
+
+	Result = EBPVRResultSwitch::OnFailed;
+	return nullptr;
+}
+
+#if UE_WITH_IRIS
+void UVRGripScriptBase::RegisterReplicationFragments(UE::Net::FFragmentRegistrationContext& Context, UE::Net::EFragmentRegistrationFlags RegistrationFlags)
+{
+	using namespace UE::Net;
+
+	Super::RegisterReplicationFragments(Context, RegistrationFlags);
+
+	FReplicationFragmentUtil::CreateAndRegisterFragmentsForObject(this, Context, RegistrationFlags);
+}
+#endif 
+
+void UVRGripScriptBase::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
+{
+
+	UBlueprintGeneratedClass* BPClass = Cast<UBlueprintGeneratedClass>(GetClass());
+	if (BPClass != NULL)
+	{
+		BPClass->GetLifetimeBlueprintReplicationList(OutLifetimeProps);
+	}
+
+	FDoRepLifetimeParams SharedParams;
+	SharedParams.bIsPushBased = true;
+
+	DOREPLIFETIME_WITH_PARAMS(UVRGripScriptBase, bReplicates, SharedParams);
+}
+
+void UVRGripScriptBase::SetIsReplicated(bool bShouldReplicate)
+{
+	if (GetIsReplicated() != bShouldReplicate)
+	{
+		bReplicates = bShouldReplicate;
+
+		FBoolProperty* BoolProperty = CastField<FBoolProperty>(this->GetClass()->FindPropertyByName("bReplicates"));
+		MARK_PROPERTY_DIRTY(this, BoolProperty);
+
+		if (AActor* OwningActor = Cast<AActor>(GetParent()))
+		{
+			if (OwningActor->IsUsingRegisteredSubObjectList())
+			{
+				if (bReplicates)
+				{
+					if (!OwningActor->IsReplicatedSubObjectRegistered(this))
+					{
+						OwningActor->AddReplicatedSubObject(this);
+					}
+				}
+				else if(OwningActor->IsReplicatedSubObjectRegistered(this))
+				{
+					OwningActor->RemoveReplicatedSubObject(this);
+				}
+			}
+		}
+		else if (UActorComponent* OwningComp = Cast<UActorComponent>(GetParent()))
+		{
+			if (bReplicates)
+			{
+				if (!OwningComp->IsReplicatedSubObjectRegistered(this))
+				{
+					OwningComp->AddReplicatedSubObject(this);
+				}
+			}
+			else if (OwningComp->IsReplicatedSubObjectRegistered(this))
+			{
+				OwningComp->RemoveReplicatedSubObject(this);
+			}
+		}
+	}
+}
+
+void UVRGripScriptBase::Tick(float DeltaTime)
+{
+
+}
+
+bool UVRGripScriptBase::IsTickable() const
+{
+	return bAllowTicking;
+}
+
+UWorld* UVRGripScriptBase::GetTickableGameObjectWorld() const
+{
+	return GetWorld();
+}
+
+bool UVRGripScriptBase::IsTickableInEditor() const
+{
+	return false;
+}
+
+bool UVRGripScriptBase::IsTickableWhenPaused() const
+{
+	return false;
+}
+
+ETickableTickType UVRGripScriptBase::GetTickableTickType() const
+{
+	if(IsTemplate(RF_ClassDefaultObject))
+		return ETickableTickType::Never;
+
+	return bCanEverTick ? ETickableTickType::Conditional : ETickableTickType::Never;
+}
+
+TStatId UVRGripScriptBase::GetStatId() const
+{
+	RETURN_QUICK_DECLARE_CYCLE_STAT(UVRGripScriptBase, STATGROUP_Tickables);
+}
+
+void UVRGripScriptBase::SetTickEnabled(bool bTickEnabled)
+{
+	bAllowTicking = bTickEnabled;
+}
+
+bool UVRGripScriptBase::CallRemoteFunction(UFunction * Function, void * Parms, FOutParmRec * OutParms, FFrame * Stack)
+{
+	bool bProcessed = false;
+
+	if (AActor* MyOwner = GetOwner())
+	{
+		FWorldContext* const Context = GEngine->GetWorldContextFromWorld(GetWorld());
+		if (Context != nullptr)
+		{
+			for (FNamedNetDriver& Driver : Context->ActiveNetDrivers)
+			{
+				if (Driver.NetDriver != nullptr && Driver.NetDriver->ShouldReplicateFunction(MyOwner, Function))
+				{
+					Driver.NetDriver->ProcessRemoteFunction(MyOwner, Function, Parms, OutParms, Stack, this);
+
+					bProcessed = true;
+				}
+			}
+		}
+	}
+
+	return bProcessed;
+}
+
+int32 UVRGripScriptBase::GetFunctionCallspace(UFunction * Function, FFrame * Stack)
+{
+	AActor* Owner = GetOwner();
+
+	if (HasAnyFlags(RF_ClassDefaultObject) || !IsSupportedForNetworking() || !Owner)
+	{
+
+		return GEngine->GetGlobalFunctionCallspace(Function, this, Stack);
+	}
+
+	return Owner->GetFunctionCallspace(Function, Stack);
+}
+
+FTransform UVRGripScriptBase::GetGripTransform(const FBPActorGripInformation &Grip, const FTransform & ParentTransform)
+{
+	return Grip.RelativeTransform * Grip.AdditionTransform * ParentTransform;
+}
+
+USceneComponent * UVRGripScriptBase::GetParentSceneComp()
+{
+	UObject* ParentObj = this->GetParent();
+
+	if (USceneComponent * PrimParent = Cast<USceneComponent>(ParentObj))
+	{
+		return PrimParent;
+	}
+	else if (AActor * ParentActor = Cast<AActor>(ParentObj))
+	{
+		return ParentActor->GetRootComponent();
+	}
+
+	return nullptr;
+}
+
+FTransform UVRGripScriptBase::GetParentTransform(bool bGetWorldTransform, FName BoneName)
+{
+	UObject* ParentObj = this->GetParent();
+
+	if (USceneComponent* PrimParent = Cast<USceneComponent>(ParentObj))
+	{
+		if (BoneName != NAME_None)
+		{
+			return PrimParent->GetSocketTransform(BoneName);
+		}
+		else
+		{
+			return PrimParent->GetComponentTransform();
+		}
+	}
+	else if (AActor* ParentActor = Cast<AActor>(ParentObj))
+	{
+		return ParentActor->GetActorTransform();
+	}
+
+	return FTransform::Identity;
+}
+
+FBodyInstance * UVRGripScriptBase::GetParentBodyInstance(FName OptionalBoneName)
+{
+	UObject * ParentObj = this->GetParent();
+
+	if (UPrimitiveComponent * PrimParent = Cast<UPrimitiveComponent>(ParentObj))
+	{
+		return PrimParent->GetBodyInstance(OptionalBoneName);
+	}
+	else if (AActor * ParentActor = Cast<AActor>(ParentObj))
+	{
+		if (UPrimitiveComponent * Prim = Cast<UPrimitiveComponent>(ParentActor->GetRootComponent()))
+		{
+			return Prim->GetBodyInstance(OptionalBoneName);
+		}
+	}
+
+	return nullptr;
+}
+
+UObject * UVRGripScriptBase::GetParent()
+{
+	return this->GetOuter();
+}
+
+AActor * UVRGripScriptBase::GetOwner()
+{
+	UObject * myOuter = this->GetOuter();
+
+	if (!myOuter)
+		return nullptr;
+
+	if (AActor * ActorOwner = Cast<AActor>(myOuter))
+	{
+		return ActorOwner;
+	}
+	else if (UActorComponent * ComponentOwner = Cast<UActorComponent>(myOuter))
+	{
+		return ComponentOwner->GetOwner();
+	}
+
+	return nullptr;
+}
+
+bool UVRGripScriptBase::HasAuthority()
+{
+	if (AActor * MyOwner = GetOwner())
+	{
+		return MyOwner->GetLocalRole() == ROLE_Authority;
+	}
+
+	return false;
+}
+
+bool UVRGripScriptBase::IsServer()
+{
+	if (AActor * MyOwner = GetOwner())
+	{
+		return MyOwner->GetNetMode() < ENetMode::NM_Client;
+	}
+
+	return false;
+}
+
+UWorld* UVRGripScriptBase::GetWorld() const
+{
+	if (IsTemplate())
+		return nullptr;
+
+	if (GIsEditor && !GIsPlayInEditorWorld)
+	{
+		return nullptr;
+	}
+	else if (UObject * Outer = GetOuter())
+	{
+		return Outer->GetWorld();
+	}
+
+	return nullptr;
+}
+
+void UVRGripScriptBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+
+	if (AActor* OwningActor = Cast<AActor>(GetParent()))
+	{
+		if (OwningActor->IsUsingRegisteredSubObjectList())
+		{
+			OwningActor->RemoveReplicatedSubObject(this);
+		}
+	}
+	else if (UActorComponent* OwningComp = Cast<UActorComponent>(GetParent()))
+	{
+		if (OwningComp->IsUsingRegisteredSubObjectList())
+		{
+			OwningComp->RemoveReplicatedSubObject(this);
+		}
+	}
+
+	OnEndPlay(EndPlayReason);
+}
+
+void UVRGripScriptBase::BeginDestroy()
+{
+	Super::BeginDestroy();
+
+	if (bReplicates)
+	{
+
+		if (AActor* OwningActor = Cast<AActor>(GetParent()))
+		{
+			if (OwningActor->IsUsingRegisteredSubObjectList())
+			{
+				OwningActor->RemoveReplicatedSubObject(this);
+			}
+		}
+		else if (UActorComponent* OwningComp = Cast<UActorComponent>(GetParent()))
+		{
+			if (OwningComp->IsUsingRegisteredSubObjectList())
+			{
+				OwningComp->RemoveReplicatedSubObject(this);
+			}
+		}
+	}
+}
+
+void UVRGripScriptBase::BeginPlay(UObject * CallingOwner)
+{
+	if (bAlreadyNotifiedPlay)
+		return;
+
+	if (bReplicates)
+	{
+
+		if (AActor* OwningActor = Cast<AActor>(CallingOwner))
+		{
+			if (OwningActor->IsUsingRegisteredSubObjectList())
+			{
+				OwningActor->AddReplicatedSubObject(this, ReplicationCondition);
+			}
+		}
+		else if (UActorComponent* OwningComp = Cast<UActorComponent>(CallingOwner))
+		{
+			if (OwningComp->IsUsingRegisteredSubObjectList())
+			{
+				OwningComp->AddReplicatedSubObject(this, ReplicationCondition);
+			}
+		}
+	}
+
+	bAlreadyNotifiedPlay = true;
+
+	OnBeginPlay(CallingOwner);
+}
+
+void UVRGripScriptBase::PostInitProperties()
+{
+	Super::PostInitProperties();
+
+	if (bReplicates)
+	{
+
+		if (GetWorld())
+		{
+			if (AActor* Owner = GetOwner())
+			{
+				if (Owner->IsActorInitialized())
+				{
+					BeginPlay(GetParent());
+				}
+			}
+		}
+	}
+}
+
+void UVRGripScriptBaseBP::Tick(float DeltaTime)
+{
+	ReceiveTick(DeltaTime);
+}

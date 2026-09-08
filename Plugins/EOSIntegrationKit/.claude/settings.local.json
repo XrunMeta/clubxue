@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Coffee/AppData/Local/UnrealEngine/**)",
+      "Read(//d//**)",
+      "Read(//c//**)",
+      "Read(//d/Program Files/**)",
+      "Bash(find \"S:/UE_5.7/Engine\" -name \"*VoiceChat*\" 2>/dev/null | head -20)",
+      "Bash(find \"S:/UE_5.7/Engine\" -name \"IVoiceChat.h\" 2>/dev/null; find \"S:/UE_5.7/Engine\" -path \"*/VoiceChat/Public*\" -name \"*.h\" 2>/dev/null | head -10)",
+      "Bash(find \"S:/UE_5.7/Engine/Source\" -name \"IVoiceChat*\" 2>/dev/null | head -10; find \"S:/UE_5.7/Engine\" -name \"VoiceChatModule*\" 2>/dev/null | head -5)",
+      "Bash(find \"S:/UE_5.7/Engine/Source\" -name \"IVoiceChat.h\" 2>/dev/null | head -5; find \"S:/UE_5.7/Engine/Source\" -name \"*VoiceChat*.h\" 2>/dev/null | head -10)",
+      "Bash(find \"S:/UE_5.7/Engine/Source/Runtime\" -name \"*.h\" 2>/dev/null | xargs grep -l \"IVoiceChat\" 2>/dev/null | head -5)",
+      "Bash(find \"S:/UE_5.7/Engine/Plugins/Online/VoiceChat/EOSVoiceChat/Source\" -name \"*.h\" 2>/dev/null | head -10)",
+      "Bash(find \"S:/UE_5.7/Engine/Plugins/Online/VoiceChat/EOSVoiceChat/Source\" -name \"*.h\" 2>/dev/null | xargs grep -l \"AddLobbyRoom\\\\|IVoiceChatUser\\\\|class.*VoiceChatUser\" 2>/dev/null)",
+      "Read(//s//**)",
+      "Bash(find \"S:/UE_5.7/Engine/Source\" -name \"*.h\" 2>/dev/null | xargs grep -l \"class IVoiceChatUser\" 2>/dev/null | head -5)",
+      "Bash(find \"S:/UE_5.7/Engine\" -path \"*/VoiceChat/Public*\" 2>/dev/null | head -10; find \"S:/UE_5.7/Engine/Source\" -name \"VoiceChat.h\" 2>/dev/null | head -5)",
+      "Bash(find \"S:/UE_5.7/Engine/Source/Runtime\" -name \"VoiceChat.h\" 2>/dev/null; find \"S:/UE_5.7/Engine/Source\" -path \"*VoiceChat*\" -name \"*.h\" 2>/dev/null | head -10)",
+      "Bash(find \"S:/UE_5.7/Engine/Source\" -name \"VoiceChat*.h\" -o -name \"*VoiceChat*.h\" 2>/dev/null | grep -v \"EOSVoiceChat\\\\|VivoxVoiceChat\\\\|Test\" | head -10)",
+      "Bash(find \"S:/UE_5.7/Engine/Plugins/Online/OnlineSubsystem/Source\" -name \"*.h\" 2>/dev/null | head -20)",
+      "Bash(find \"S:/UE_5.7/Engine/Source/Runtime\" -name \"OnlineSubsystem*.h\" 2>/dev/null | head -5; find \"S:/UE_5.7/Engine/Source/Runtime\" -name \"PlayerVoice*\" 2>/dev/null | head -5)",
+      "Bash(find \"S:/UE_5.7/Engine/Source\" -name \"OnlineVoice*\" 2>/dev/null | head -5)",
+      "Bash(find \"S:/UE_5.7/Engine/Source/Runtime/Online*\" -name \"*.h\" 2>/dev/null | xargs grep -l \"RegisterTalker\\\\|RemoteTalker\\\\|LocalTalker\\\\|MutePlayer\" 2>/dev/null | head -5)",
+      "Bash(find \"S:/UE_5.7/Engine\" -name \"OnlineSubsystemUtils.h\" -not -path \"*/Intermediate*\" 2>/dev/null | head -5)",
+      "Bash(find \"S:/UE_5.7/Engine/Plugins/Online/OnlineSubsystemUtils\" -name \"*.h\" 2>/dev/null | xargs grep -l \"RegisterTalker\\\\|VoiceChat\\\\|MutePlayer\" 2>/dev/null | head -10)",
+      "Bash(find \"S:/UE_5.7/Engine\" -name \"NetDriver.cpp\" -not -path \"*/Intermediate*\" 2>/dev/null | head -3)"
+    ]
+  }
+}

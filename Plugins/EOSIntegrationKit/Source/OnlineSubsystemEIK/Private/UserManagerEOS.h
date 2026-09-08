@@ -1,0 +1,477 @@
+
+
+#pragma once
+
+#include "OnlineSubsystemEOSTypes.h"
+#include "Runtime/Launch/Resources/Version.h"
+#include "Misc/Paths.h"
+#include "Interfaces/OnlineExternalUIInterface.h"
+#include "Interfaces/OnlineFriendsInterface.h"
+#include "Interfaces/OnlinePresenceInterface.h"
+#include "OnlineSubsystemEIK/SdkFunctions/EIK_SharedFunctionFile.h"
+
+#if WITH_EOS_SDK
+	#include "eos_auth_types.h"
+	#include "eos_friends_types.h"
+	#include "eos_connect_types.h"
+
+class FOnlineSubsystemEOS;
+class IOnlineSubsystem;
+
+typedef TSharedPtr<FOnlineUser> FOnlineUserPtr;
+typedef TSharedRef<FOnlineUser> FOnlineUserRef;
+
+class FOnlineUserEOS :
+	public TOnlineUserEOS<FOnlineUser, IAttributeAccessInterface>
+{
+public:
+	FOnlineUserEOS(FUniqueNetIdEOSRef InUserId) :
+		TOnlineUserEOS<FOnlineUser, IAttributeAccessInterface>(InUserId)
+	{
+	}
+	virtual ~FOnlineUserEOS() = default;
+};
+
+typedef TSharedPtr<FOnlineUserEOS> FOnlineUserEOSPtr;
+typedef TSharedRef<FOnlineUserEOS> FOnlineUserEOSRef;
+
+class FUserOnlineAccountEOS : 
+	public TUserOnlineAccountEOS<FUserOnlineAccount>
+{
+public:
+	FUserOnlineAccountEOS(FUniqueNetIdEOSRef InUserId)
+		: TUserOnlineAccountEOS<FUserOnlineAccount>(InUserId)
+	{
+	}
+	virtual ~FUserOnlineAccountEOS() = default;
+};
+
+typedef TSharedPtr<FUserOnlineAccountEOS> FUserOnlineAccountEOSPtr;
+typedef TSharedRef<FUserOnlineAccountEOS> FUserOnlineAccountEOSRef;
+
+class FOnlineFriendEOS :
+	public TOnlineFriendEOS<FOnlineFriend>
+{
+public:
+	FOnlineFriendEOS(FUniqueNetIdEOSRef InUserId) :
+		TOnlineFriendEOS<FOnlineFriend>(InUserId)
+	{
+	}
+	virtual ~FOnlineFriendEOS() = default;
+};
+
+typedef TSharedPtr<FOnlineFriendEOS> FOnlineFriendEOSPtr;
+typedef TSharedRef<FOnlineFriendEOS> FOnlineFriendEOSRef;
+
+class FOnlineBlockedPlayerEOS :
+	public TOnlineBlockedPlayerEOS<FOnlineBlockedPlayer>
+{
+public:
+	FOnlineBlockedPlayerEOS(FUniqueNetIdEOSRef InUserId) :
+		TOnlineBlockedPlayerEOS<FOnlineBlockedPlayer>(InUserId)
+	{
+	}
+	virtual ~FOnlineBlockedPlayerEOS() = default;
+};
+
+typedef TSharedPtr<FOnlineBlockedPlayerEOS> FOnlineBlockedPlayerEOSPtr;
+typedef TSharedRef<FOnlineBlockedPlayerEOS> FOnlineBlockedPlayerEOSRef;
+
+class FOnlineRecentPlayerEOS :
+	public TOnlineRecentPlayerEOS<FOnlineRecentPlayer>
+{
+public:
+	FOnlineRecentPlayerEOS(FUniqueNetIdEOSRef InUserId) :
+		TOnlineRecentPlayerEOS<FOnlineRecentPlayer>(InUserId)
+	{
+	}
+	virtual ~FOnlineRecentPlayerEOS() = default;
+};
+
+typedef TSharedPtr<FOnlineRecentPlayerEOS> FOnlineRecentPlayerEOSPtr;
+typedef TSharedRef<FOnlineRecentPlayerEOS> FOnlineRecentPlayerEOSRef;
+
+template<class ListClass, class ListClassReturnType>
+class TOnlinePlayerList
+{
+
+	int32 LocalUserNum;
+
+	FUniqueNetIdEOSRef OwningNetId;
+
+	TArray<ListClass> ListEntries;
+
+	TMap<FString, ListClass> NetIdStringToListEntryMap;
+
+public:
+	TOnlinePlayerList(int32 InLocalUserNum, FUniqueNetIdEOSRef InOwningNetId)
+		: LocalUserNum(InLocalUserNum)
+		, OwningNetId(InOwningNetId)
+	{
+	}
+
+	const TArray<ListClass>& GetList()
+	{
+		return ListEntries;
+	}
+
+	void Add(const FString& InNetId, ListClass InListEntry)
+	{
+		ListEntries.Add(InListEntry);
+		NetIdStringToListEntryMap.Add(InNetId, InListEntry);
+	}
+
+	void Remove(const FString& InNetId, ListClass InListEntry)
+	{
+		const ListClass* Found = NetIdStringToListEntryMap.Find(InNetId);
+		if (Found != nullptr)
+		{
+			NetIdStringToListEntryMap.Remove(InNetId);
+		}
+		ListEntries.Remove(InListEntry);
+	}
+
+	void Empty(int32 Slack = 0)
+	{
+		ListEntries.Empty(Slack);
+		NetIdStringToListEntryMap.Empty(Slack);
+	}
+
+	void UpdateNetIdStr(const FString& PrevNetId, const FString& NewNetId)
+	{
+		ListClass ListEntry = NetIdStringToListEntryMap[PrevNetId];
+		NetIdStringToListEntryMap.Remove(PrevNetId);
+		NetIdStringToListEntryMap.Add(NewNetId, ListEntry);
+	}
+
+	ListClassReturnType GetByIndex(int32 Index)
+	{
+		if (ListEntries.IsValidIndex(Index))
+		{
+			return ListEntries[Index];
+		}
+		return ListClassReturnType();
+	}
+
+	ListClassReturnType GetByNetIdString(const FString& NetId)
+	{
+		const ListClass* Found = NetIdStringToListEntryMap.Find(NetId);
+		if (Found != nullptr)
+		{
+			return *Found;
+		}
+		return ListClassReturnType();
+	}
+};
+
+class FFriendsListEOS :
+	public TOnlinePlayerList<FOnlineFriendEOSRef, FOnlineFriendEOSPtr>
+{
+public:
+	FFriendsListEOS(int32 InLocalUserNum, FUniqueNetIdEOSRef InOwningNetId)
+		: TOnlinePlayerList<FOnlineFriendEOSRef, FOnlineFriendEOSPtr>(InLocalUserNum, InOwningNetId)
+	{
+	}
+	virtual ~FFriendsListEOS() = default;
+};
+
+typedef TSharedRef<FFriendsListEOS> FFriendsListEOSRef;
+
+class FBlockedPlayersListEOS :
+	public TOnlinePlayerList<FOnlineBlockedPlayerEOSRef, FOnlineBlockedPlayerEOSPtr>
+{
+public:
+	FBlockedPlayersListEOS(int32 InLocalUserNum, FUniqueNetIdEOSRef InOwningNetId)
+		: TOnlinePlayerList<FOnlineBlockedPlayerEOSRef, FOnlineBlockedPlayerEOSPtr>(InLocalUserNum, InOwningNetId)
+	{
+	}
+	virtual ~FBlockedPlayersListEOS() = default;
+};
+
+typedef TSharedRef<FBlockedPlayersListEOS> FBlockedPlayersListEOSRef;
+
+class FRecentPlayersListEOS :
+	public TOnlinePlayerList<FOnlineRecentPlayerEOSRef, FOnlineRecentPlayerEOSPtr>
+{
+public:
+	FRecentPlayersListEOS(int32 InLocalUserNum, FUniqueNetIdEOSRef InOwningNetId)
+		: TOnlinePlayerList<FOnlineRecentPlayerEOSRef, FOnlineRecentPlayerEOSPtr>(InLocalUserNum, InOwningNetId)
+	{
+	}
+	virtual ~FRecentPlayersListEOS() = default;
+};
+
+typedef TSharedRef<FRecentPlayersListEOS> FRecentPlayersListEOSRef;
+
+struct FNotificationIdCallbackPair
+{
+	EOS_NotificationId NotificationId;
+	FCallbackBase* Callback;
+
+	FNotificationIdCallbackPair()
+		: NotificationId(EOS_INVALID_NOTIFICATIONID)
+		, Callback(nullptr)
+	{
+	}
+
+	virtual ~FNotificationIdCallbackPair()
+	{
+		delete Callback;
+	}
+};
+
+class FUserManagerEOS
+	: public IOnlineIdentity
+	, public IOnlineExternalUI
+	, public IOnlineFriends
+	, public IOnlinePresence
+	, public IOnlineUser
+	, public TSharedFromThis<FUserManagerEOS, ESPMode::ThreadSafe>
+{
+public:
+
+	FUserManagerEOS(FOnlineSubsystemEOS* InSubsystem);
+
+	virtual ~FUserManagerEOS();
+
+	void Init();
+	void Shutdown();
+	void Tick(float DeltaTime);
+	virtual bool AutoLogin(int32 LocalUserNum) override;
+	void LaunchDevTool();
+	virtual bool AutoLoginUsingSettings(int32 LocalUserNum);
+	virtual bool AutoLoginWithFallback(int32 LocalUserNum);
+	bool bAutoLoginAttempted = false;
+	bool bAutoLoginInProgress = false;
+
+	void CreateDeviceID(const FOnlineAccountCredentials& AccountCredentials);
+	void CreateConnectID(EOS_ContinuanceToken ContinuanceToken, const FOnlineAccountCredentials& AccountCredentials);
+	void DeleteDeviceID(const FOnlineAccountCredentials& AccountCredentials);
+	void CompleteDeviceIDLogin(int32 LocalUserNum, EOS_EpicAccountId AccountId, EOS_ProductUserId UserId);
+	void OpenIDLogin(const FOnlineAccountCredentials& AccountCredentials);
+
+	virtual bool Login(int32 LocalUserNum, const FOnlineAccountCredentials& AccountCredentials) override;
+	void LoginViaAuthInterface(int32 LocalUserNum, const FOnlineAccountCredentials& AccountCredentials);
+	static void EOS_CALL LoginViaConnectInterfaceCallback(const EOS_Connect_LoginCallbackInfo* Data);
+	void LoginViaConnectInterface(const FOnlineAccountCredentials& AccountCredentials);
+	static EEIK_EExternalCredentialType GetExternalCredentialType(const FString& Type);
+	static EEIK_ELoginCredentialType GetLoginCredentialType(const FString& Type);
+	virtual bool Logout(int32 LocalUserNum) override;
+	virtual TSharedPtr<FUserOnlineAccount> GetUserAccount(const FUniqueNetId& UserId) const override;
+	virtual TArray<TSharedPtr<FUserOnlineAccount>> GetAllUserAccounts() const override;
+	virtual FUniqueNetIdPtr GetUniquePlayerId(int32 LocalUserNum) const override;
+	virtual FUniqueNetIdPtr CreateUniquePlayerId(uint8* Bytes, int32 Size) override;
+	virtual FUniqueNetIdPtr CreateUniquePlayerId(const FString& Str) override;
+	virtual ELoginStatus::Type GetLoginStatus(int32 LocalUserNum) const override;
+	virtual ELoginStatus::Type GetLoginStatus(const FUniqueNetId& UserId) const override;
+	virtual FString GetPlayerNickname(int32 LocalUserNum) const override;
+	virtual FString GetPlayerNickname(const FUniqueNetId& UserId) const override;
+	virtual FString GetAuthToken(int32 LocalUserNum) const override;
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4
+#else
+	virtual void GetUserPrivilege(const FUniqueNetId& UserId, EUserPrivileges::Type Privilege, const FOnGetUserPrivilegeCompleteDelegate& Delegate) override;
+#endif
+	virtual FString GetAuthType() const override;
+	virtual void RevokeAuthToken(const FUniqueNetId& LocalUserId, const FOnRevokeAuthTokenCompleteDelegate& Delegate) override;
+	virtual FPlatformUserId GetPlatformUserIdFromUniqueNetId(const FUniqueNetId& UniqueNetId) const override;
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5
+	virtual void GetLinkedAccountAuthToken(int32 LocalUserNum, const FString& TokenType, const FOnGetLinkedAccountAuthTokenCompleteDelegate& Delegate) const override;
+#else
+	virtual void GetLinkedAccountAuthToken(int32 LocalUserNum, const FOnGetLinkedAccountAuthTokenCompleteDelegate& Delegate) const override;
+#endif
+#if ENGINE_MAJOR_VERSION == 5
+	virtual int32 GetLocalUserNumFromPlatformUserId(FPlatformUserId PlatformUserId) const override;
+#else
+	virtual int32 GetLocalUserNumFromPlatformUserId(FPlatformUserId PlatformUserId) const;
+#endif
+
+	ELoginStatus::Type GetLoginStatus(const FUniqueNetIdEOS& UserId) const;
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4
+	void GetUserPrivilege(const FUniqueNetId& LocalUserId, EUserPrivileges::Type Privilege,
+	                      const FOnGetUserPrivilegeCompleteDelegate& Delegate,
+	                      EShowPrivilegeResolveUI ShowResolveUI) override;
+#endif
+
+	virtual bool ShowLoginUI(const int ControllerIndex, bool bShowOnlineOnly, bool bShowSkipButton, const FOnLoginUIClosedDelegate& Delegate = FOnLoginUIClosedDelegate()) override;
+	virtual bool ShowAccountCreationUI(const int ControllerIndex, const FOnAccountCreationUIClosedDelegate& Delegate = FOnAccountCreationUIClosedDelegate()) override;
+	virtual bool ShowFriendsUI(int32 LocalUserNum) override;
+	virtual bool ShowInviteUI(int32 LocalUserNum, FName SessionName = NAME_GameSession) override;
+	virtual bool ShowAchievementsUI(int32 LocalUserNum) override;
+	virtual bool ShowLeaderboardUI(const FString& LeaderboardName) override;
+	virtual bool ShowWebURL(const FString& Url, const FShowWebUrlParams& ShowParams, const FOnShowWebUrlClosedDelegate& Delegate = FOnShowWebUrlClosedDelegate()) override;
+	virtual bool CloseWebURL() override;
+	virtual bool ShowProfileUI(const FUniqueNetId& Requestor, const FUniqueNetId& Requestee, const FOnProfileUIClosedDelegate& Delegate = FOnProfileUIClosedDelegate()) override;
+	virtual bool ShowAccountUpgradeUI(const FUniqueNetId& UniqueId) override;
+	virtual bool ShowStoreUI(int32 LocalUserNum, const FShowStoreParams& ShowParams, const FOnShowStoreUIClosedDelegate& Delegate = FOnShowStoreUIClosedDelegate()) override;
+	virtual bool ShowSendMessageUI(int32 LocalUserNum, const FShowSendMessageParams& ShowParams, const FOnShowSendMessageUIClosedDelegate& Delegate = FOnShowSendMessageUIClosedDelegate()) override;
+
+	virtual bool ReadFriendsList(int32 LocalUserNum, const FString& ListName, const FOnReadFriendsListComplete& Delegate = FOnReadFriendsListComplete()) override;
+	virtual bool DeleteFriendsList(int32 LocalUserNum, const FString& ListName, const FOnDeleteFriendsListComplete& Delegate = FOnDeleteFriendsListComplete()) override;
+	virtual bool SendInvite(int32 LocalUserNum, const FUniqueNetId& FriendId, const FString& ListName, const FOnSendInviteComplete& Delegate = FOnSendInviteComplete()) override;
+	virtual bool AcceptInvite(int32 LocalUserNum, const FUniqueNetId& FriendId, const FString& ListName, const FOnAcceptInviteComplete& Delegate = FOnAcceptInviteComplete()) override;
+	virtual bool RejectInvite(int32 LocalUserNum, const FUniqueNetId& FriendId, const FString& ListName) override;
+	virtual bool DeleteFriend(int32 LocalUserNum, const FUniqueNetId& FriendId, const FString& ListName) override;
+	virtual bool GetFriendsList(int32 LocalUserNum, const FString& ListName, TArray< TSharedRef<FOnlineFriend> >& OutFriends) override;
+	virtual TSharedPtr<FOnlineFriend> GetFriend(int32 LocalUserNum, const FUniqueNetId& FriendId, const FString& ListName) override;
+	virtual bool IsFriend(int32 LocalUserNum, const FUniqueNetId& FriendId, const FString& ListName) override;
+	virtual bool QueryRecentPlayers(const FUniqueNetId& UserId, const FString& Namespace) override;
+	virtual bool GetRecentPlayers(const FUniqueNetId& UserId, const FString& Namespace, TArray< TSharedRef<FOnlineRecentPlayer> >& OutRecentPlayers) override;
+	virtual bool BlockPlayer(int32 LocalUserNum, const FUniqueNetId& PlayerId) override;
+	virtual bool UnblockPlayer(int32 LocalUserNum, const FUniqueNetId& PlayerId) override;
+	virtual bool QueryBlockedPlayers(const FUniqueNetId& UserId) override;
+	virtual bool GetBlockedPlayers(const FUniqueNetId& UserId, TArray< TSharedRef<FOnlineBlockedPlayer> >& OutBlockedPlayers) override;
+	virtual void DumpBlockedPlayers() const override;
+	virtual void SetFriendAlias(int32 LocalUserNum, const FUniqueNetId& FriendId, const FString& ListName, const FString& Alias, const FOnSetFriendAliasComplete& Delegate = FOnSetFriendAliasComplete()) override;
+	virtual void DeleteFriendAlias(int32 LocalUserNum, const FUniqueNetId& FriendId, const FString& ListName, const FOnDeleteFriendAliasComplete& Delegate = FOnDeleteFriendAliasComplete()) override;
+	virtual void DumpRecentPlayers() const override;
+
+	bool HandleFriendsExec(UWorld* InWorld, const TCHAR* Cmd, FOutputDevice& Ar);
+
+	virtual void SetPresence(const FUniqueNetId& User, const FOnlineUserPresenceStatus& Status, const FOnPresenceTaskCompleteDelegate& Delegate = FOnPresenceTaskCompleteDelegate()) override;
+	virtual void QueryPresence(const FUniqueNetId& User, const FOnPresenceTaskCompleteDelegate& Delegate = FOnPresenceTaskCompleteDelegate()) override;
+	virtual EOnlineCachedResult::Type GetCachedPresence(const FUniqueNetId& User, TSharedPtr<FOnlineUserPresence>& OutPresence) override;
+	virtual EOnlineCachedResult::Type GetCachedPresenceForApp(const FUniqueNetId& LocalUserId, const FUniqueNetId& User, const FString& AppId, TSharedPtr<FOnlineUserPresence>& OutPresence) override;
+
+	virtual bool QueryUserInfo(int32 LocalUserNum, const TArray<FUniqueNetIdRef>& UserIds) override;
+	virtual bool GetAllUserInfo(int32 LocalUserNum, TArray<TSharedRef<class FOnlineUser>>& OutUsers) override;
+	virtual TSharedPtr<FOnlineUser> GetUserInfo(int32 LocalUserNum, const class FUniqueNetId& UserId) override;
+	virtual bool QueryUserIdMapping(const FUniqueNetId& UserId, const FString& DisplayNameOrEmail, const FOnQueryUserMappingComplete& Delegate = FOnQueryUserMappingComplete()) override;
+	virtual bool QueryExternalIdMappings(const FUniqueNetId& UserId, const FExternalIdQueryOptions& QueryOptions, const TArray<FString>& ExternalIds, const FOnQueryExternalIdMappingsComplete& Delegate = FOnQueryExternalIdMappingsComplete()) override;
+	virtual void GetExternalIdMappings(const FExternalIdQueryOptions& QueryOptions, const TArray<FString>& ExternalIds, TArray<FUniqueNetIdPtr>& OutIds) override;
+	virtual FUniqueNetIdPtr GetExternalIdMapping(const FExternalIdQueryOptions& QueryOptions, const FString& ExternalId) override;
+
+	EOS_EpicAccountId GetLocalEpicAccountId(int32 LocalUserNum) const;
+	EOS_EpicAccountId GetLocalEpicAccountId() const;
+	EOS_ProductUserId GetLocalProductUserId(int32 LocalUserNum) const;
+	EOS_ProductUserId GetLocalProductUserId() const;
+	EOS_EpicAccountId GetLocalEpicAccountId(EOS_ProductUserId UserId) const;
+	EOS_ProductUserId GetLocalProductUserId(EOS_EpicAccountId AccountId) const;
+	FUniqueNetIdEOSPtr GetLocalUniqueNetIdEOS(int32 LocalUserNum) const;
+	FUniqueNetIdEOSPtr GetLocalUniqueNetIdEOS(EOS_ProductUserId UserId) const;
+	FUniqueNetIdEOSPtr GetLocalUniqueNetIdEOS(EOS_EpicAccountId AccountId) const;
+	FUniqueNetIdEOSPtr GetLocalUniqueNetIdEOS() const
+	{
+		return GetLocalUniqueNetIdEOS(GetDefaultLocalUser());
+	}
+
+	int32 GetLocalUserNumFromUniqueNetId(const FUniqueNetId& NetId) const;
+	bool IsLocalUser(const FUniqueNetId& NetId) const;
+
+	typedef TFunction<void(TMap<EOS_ProductUserId, FUniqueNetIdEOSRef> ResolvedUniqueNetIds)> FResolveUniqueNetIdsCallback;
+	typedef TFunction<void(FUniqueNetIdEOSRef ResolvedUniqueNetId)> FResolveUniqueNetIdCallback;
+	bool GetEpicAccountIdFromProductUserId(const EOS_ProductUserId& ProductUserId, EOS_EpicAccountId& OutEpicAccountId) const;
+	void ResolveUniqueNetId(const EOS_ProductUserId& ProductUserId, const FResolveUniqueNetIdCallback& Callback) const;
+	void ResolveUniqueNetIds(const TArray<EOS_ProductUserId>& ProductUserIds, const FResolveUniqueNetIdsCallback& Callback) const;
+
+	FOnlineUserPtr GetLocalOnlineUser(int32 LocalUserNum) const;
+	FOnlineUserPtr GetOnlineUser(EOS_ProductUserId UserId) const;
+	FOnlineUserPtr GetOnlineUser(EOS_EpicAccountId AccountId) const;
+
+	FUserManagerEOS() = delete;
+
+	bool ConnectLoginEAS(int32 LocalUserNum, EOS_EpicAccountId AccountId);
+	void LoginViaExternalAuth(int32 LocalUserNum);
+	void CreateConnectedLogin(int32 LocalUserNum, EOS_EpicAccountId AccountId, EOS_ContinuanceToken Token);
+	void LinkEAS(int32 LocalUserNum, EOS_ContinuanceToken Token);
+	void RefreshConnectLogin(int32 LocalUserNum);
+	bool ConnectLoginNoEAS(int32 LocalUserNum);
+
+	void FullLoginCallback(int32 LocalUserNum, EOS_EpicAccountId AccountId, EOS_ProductUserId UserId);
+	void FriendStatusChanged(const EOS_Friends_OnFriendsUpdateInfo* Data);
+	void LoginStatusChanged(const EOS_Auth_LoginStatusChangedCallbackInfo* Data);
+
+	int32 GetDefaultLocalUser() const { return DefaultLocalUser; }
+	void GetPlatformAuthToken(int32 LocalUserNum, const FOnGetLinkedAccountAuthTokenCompleteDelegate& Delegate) const;
+
+private:
+	void RemoveLocalUser(int32 LocalUserNum);
+	void AddLocalUser(int32 LocalUserNum, EOS_EpicAccountId EpicAccountId, EOS_ProductUserId UserId);
+
+	void AddFriend(int32 LocalUserNum, EOS_EpicAccountId EpicAccountId);
+	void AddRemotePlayer(int32 LocalUserNum, const FString& NetId, EOS_EpicAccountId EpicAccountId);
+	void AddRemotePlayer(int32 LocalUserNum, const FString& NetId, EOS_EpicAccountId EpicAccountId, FUniqueNetIdEOSPtr UniqueNetId, FOnlineUserPtr OnlineUser, IAttributeAccessInterfaceRef AttributeRef);
+	void UpdateRemotePlayerProductUserId(EOS_EpicAccountId AccountId, EOS_ProductUserId UserId);
+	void ReadUserInfo(int32 LocalUserNum, EOS_EpicAccountId EpicAccountId);
+
+	void UpdateUserInfo(IAttributeAccessInterfaceRef AttriubteAccessRef, EOS_EpicAccountId LocalId, EOS_EpicAccountId TargetId);
+	bool IsFriendQueryUserInfoOngoing(int32 LocalUserNum);
+	void ProcessReadFriendsListComplete(int32 LocalUserNum, bool bWasSuccessful, const FString& ErrorStr);
+
+	void UpdatePresence(EOS_EpicAccountId AccountId);
+	void UpdateFriendPresence(const FString& FriendId, FOnlineUserPresenceRef Presence);
+
+	IOnlineSubsystem* GetPlatformOSS() const;
+	FString GetPlatformDisplayName(int32 LocalUserNum) const;
+
+	FOnlineSubsystemEOS* EOSSubsystem;
+
+	int32 DefaultLocalUser;
+
+	EOS_NotificationId LoginNotificationId;
+	FCallbackBase* LoginNotificationCallback;
+	EOS_NotificationId FriendsNotificationId;
+	FCallbackBase* FriendsNotificationCallback;
+	EOS_NotificationId PresenceNotificationId;
+	FCallbackBase* PresenceNotificationCallback;
+	TMap<int32, FNotificationIdCallbackPair*> LocalUserNumToConnectLoginNotifcationMap;
+
+	TMap<int32, EOS_EpicAccountId> UserNumToAccountIdMap;
+	TMap<EOS_EpicAccountId, int32> AccountIdToUserNumMap;
+	TMap<int32, FUniqueNetIdEOSPtr> UserNumToNetIdMap;
+	TMap<int32, EOS_ProductUserId> UserNumToProductUserIdMap;
+	TMap<EOS_ProductUserId, int32> ProductUserIdToUserNumMap;
+	TMap<FString, FUserOnlineAccountEOSRef> StringToUserAccountMap;
+
+	TMap<EOS_EpicAccountId, FString> AccountIdToStringMap;
+	TMap<EOS_ProductUserId, FString> ProductUserIdToStringMap;
+
+	TMap<int32, FFriendsListEOSRef> LocalUserNumToFriendsListMap;
+	TMap<FString, FFriendsListEOSRef> NetIdStringToFriendsListMap;
+
+	TMap<int32, FBlockedPlayersListEOSRef> LocalUserNumToBlockedPlayerListMap;
+	TMap<FString, FBlockedPlayersListEOSRef> NetIdStringToBlockedPlayerListMap;
+
+	TMap<int32, FRecentPlayersListEOSRef> LocalUserNumToRecentPlayerListMap;
+	TMap<FString, FRecentPlayersListEOSRef> NetIdStringToRecentPlayerListMap;
+
+	TMap<FString, FOnlineUserPtr> NetIdStringToOnlineUserMap;
+	TMap<EOS_EpicAccountId, FOnlineUserPtr> EpicAccountIdToOnlineUserMap;
+	TMap<FString, IAttributeAccessInterfaceRef> NetIdStringToAttributeAccessMap;
+	TMap<EOS_EpicAccountId, IAttributeAccessInterfaceRef> EpicAccountIdToAttributeAccessMap;
+
+	TMap<FString, FOnlineUserPresenceRef> NetIdStringToOnlineUserPresenceMap;
+
+	TMap<int32, TArray<EOS_EpicAccountId>> IsFriendQueryUserInfoOngoingForLocalUserMap;
+
+	TMap<int32, TArray<FString>> IsPlayerQueryExternalMappingsOngoingForLocalUserMap;
+
+	struct ReadUserListInfo
+	{
+		const int32 LocalUserNum;
+		const FString ListName;
+		const FOnReadFriendsListComplete Delegate;
+
+		ReadUserListInfo(int32 InLocalUserNum, const FString& InListName, FOnReadFriendsListComplete InDelegate)
+			: LocalUserNum(InLocalUserNum), ListName(InListName), Delegate(MoveTemp(InDelegate))
+		{
+		}
+
+		void ExecuteDelegateIfBound(bool bWasSuccessful, const FString& ErrorStr) const
+		{
+			Delegate.ExecuteIfBound(LocalUserNum, bWasSuccessful, ListName, ErrorStr);
+		};
+	};
+
+	TMap<int32, TArray<ReadUserListInfo>> CachedReadUserListInfoForLocalUserMap;
+
+	EOS_NotificationId DisplaySettingsUpdatedId = EOS_INVALID_NOTIFICATIONID;
+	FCallbackBase* DisplaySettingsUpdatedCallback = nullptr;
+
+	TMap<int32, TSharedRef<FOnlineAccountCredentials>> LocalUserNumToLastLoginCredentials;
+};
+
+typedef TSharedPtr<FUserManagerEOS, ESPMode::ThreadSafe> FUserManagerEOSPtr;
+typedef TWeakPtr<FUserManagerEOS, ESPMode::ThreadSafe> FUserManagerEOSWeakPtr;
+typedef TWeakPtr<const FUserManagerEOS, ESPMode::ThreadSafe> FUserManagerEOSConstWeakPtr;
+
+#endif

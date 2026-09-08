@@ -388,6 +388,7 @@ MigrationBackup/
 *.xcworkspace
 *.opensdf
 *.sdf
+*.vsconfig
 
 # Precompiled Assets
 SourceArt/**/*.png
@@ -415,11 +416,14 @@ Build/*/**
 Saved/*
 
 # Compiled source files for the engine to use
+Content/__ExternalActors__/*
+Content/__ExternalObjects__/*
 Intermediate/*
 Plugins/*/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
+
 
 *_BuiltData.uasset
 # Plugins/*

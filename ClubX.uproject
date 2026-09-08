@@ -1,0 +1,169 @@
+{
+    "FileVersion":  3,
+    "EngineAssociation":  "{FC2B2A26-496D-1988-540B-D290DE6EF8C1}",
+    "Category":  "",
+    "Description":  "",
+    "Modules":  [
+                    {
+                        "Name":  "ClubX",
+                        "Type":  "Runtime",
+                        "LoadingPhase":  "Default",
+                        "AdditionalDependencies":  [
+                                                       "Engine",
+                                                       "UMG"
+                                                   ]
+                    }
+                ],
+    "Plugins":  [
+                    {
+                        "Name":  "ModelingToolsEditorMode",
+                        "Enabled":  true,
+                        "TargetAllowList":  [
+                                                "Editor"
+                                            ]
+                    },
+					{
+						"Name": "VoiceChat",
+						"Enabled": true
+					},
+                    {
+                        "Name":  "EOSIntegrationKit",
+                        "Enabled":  true,
+                        "MarketplaceURL":  "com.epicgames.launcher://ue/oth-path"
+                    },
+                    {
+                        "Name":  "VaRest",
+                        "Enabled":  true,
+                        "MarketplaceURL":  "com.epicgames.launcher://ue/oth-path"
+                    },
+                    {
+                        "Name":  "BinkMedia",
+                        "Enabled":  true
+                    },
+                    {
+                        "Name":  "HDRIBackdrop",
+                        "Enabled":  true
+                    },
+                    {
+                        "Name":  "AppleImageUtils",
+                        "Enabled":  false
+                    },
+                    {
+                        "Name":  "AppleMoviePlayer",
+                        "Enabled":  false
+                    },
+                    {
+                        "Name":  "ArchVisCharacter",
+                        "Enabled":  false
+                    },
+                    {
+                        "Name":  "NullSourceCodeAccess",
+                        "Enabled":  false
+                    },
+                    {
+                        "Name":  "LinuxDeviceProfileSelector",
+                        "Enabled":  false
+                    },
+                    {
+                        "Name":  "MacGraphicsSwitching",
+                        "Enabled":  false
+                    },
+                    {
+                        "Name":  "PlasticSourceControl",
+                        "Enabled":  false
+                    },
+                    {
+                        "Name":  "OpenImageDenoise",
+                        "Enabled":  false
+                    },
+                    {
+                        "Name":  "SpeedTreeImporter",
+                        "Enabled":  false
+                    },
+                    {
+                        "Name":  "SubversionSourceControl",
+                        "Enabled":  false
+                    },
+                    {
+                        "Name":  "MovieRenderPipeline",
+                        "Enabled":  true
+                    },
+                    {
+                        "Name":  "MinimapPlugin",
+                        "Enabled":  true,
+                        "MarketplaceURL":  "com.epicgames.launcher://ue/oth-path"
+                    },
+                    {
+                        "Name":  "VRExpansionPlugin",
+                        "Enabled":  true,
+                        "SupportedTargetPlatforms":  [
+                                                         "Win64",
+                                                         "Linux",
+                                                         "Android",
+                                                         "Mac",
+                                                         "IOS"
+                                                     ]
+                    },
+                    {
+                        "Name":  "NPC_Optimizator",
+                        "Enabled":  true,
+                        "MarketplaceURL":  "com.epicgames.launcher://ue/oth-path"
+                    },
+                    {
+                        "Name":  "OpenXRExpansionPlugin",
+                        "Enabled":  true,
+                        "SupportedTargetPlatforms":  [
+                                                         "Win64",
+                                                         "Linux",
+                                                         "Android",
+                                                         "Mac",
+                                                         "IOS"
+                                                     ]
+                    },
+                    {
+                        "Name":  "OpenXR",
+                        "Enabled":  true,
+                        "SupportedTargetPlatforms":  [
+                                                         "Win64",
+                                                         "Linux",
+                                                         "Android",
+                                                         "VisionOS"
+                                                     ]
+                    },
+                    {
+                        "Name":  "TDSHeros",
+                        "Enabled":  true,
+                        "MarketplaceURL":  "com.epicgames.launcher://ue/oth-path"
+                    },
+                    {
+                        "Name":  "HttpHelper",
+                        "Enabled":  true,
+                        "MarketplaceURL":  "com.epicgames.launcher://ue/oth-path"
+                    },
+                    {
+                        "Name":  "StaticMeshEditorModeling",
+                        "Enabled":  true
+                    },
+                    {
+                        "Name":  "SkeletalMeshModelingTools",
+                        "Enabled":  true
+                    },
+                    {
+                        "Name":  "OnlineSubsystemSteam",
+                        "Enabled":  true
+                    },
+                    {
+                        "Name":  "SteamIntegrationKit",
+                        "Enabled":  true
+                    },
+                    {
+                        "Name":  "OculusXR",
+                        "Enabled":  false
+                    }
+				
+                ],
+    "TargetPlatforms":  [
+                            "Android",
+                            "Windows"
+                        ]
+}
